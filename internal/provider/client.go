@@ -65,6 +65,51 @@ type repositoryTagResponse struct {
 	Value string `json:"value"`
 }
 
+func (c *Client) listRoleGroups() ([]roleGroupReference, error) {
+	const pageSize = 100
+	all := make([]roleGroupReference, 0)
+	skip := 0
+
+	for {
+		endpoint := fmt.Sprintf("/rest-api/v1/roleGroups?skip=%d&pageSize=%d", skip, pageSize)
+		var out apiPagedResponse[roleGroupReference]
+		if err := c.doJSON(http.MethodGet, endpoint, nil, &out); err != nil {
+			return nil, err
+		}
+		all = append(all, out.Items...)
+
+		skip += len(out.Items)
+		if len(out.Items) == 0 || skip >= out.Paging.TotalItemCount {
+			break
+		}
+	}
+	return all, nil
+}
+
+func (c *Client) getRoleGroup(key string) (*roleGroupBody, error) {
+	var out roleGroupBody
+	if err := c.doJSON(http.MethodGet, fmt.Sprintf("/rest-api/v1/roleGroups/%s", pathEscape(key)), nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) createRoleGroup(body roleGroupBody) (string, error) {
+	var out string
+	if err := c.doJSON(http.MethodPost, "/rest-api/v1/roleGroups", body, &out); err != nil {
+		return "", err
+	}
+	return out, nil
+}
+
+func (c *Client) updateRoleGroup(key string, body roleGroupBody) error {
+	return c.doJSON(http.MethodPut, fmt.Sprintf("/rest-api/v1/roleGroups/%s", pathEscape(key)), body, nil)
+}
+
+func (c *Client) deleteRoleGroup(key string) error {
+	return c.doJSON(http.MethodDelete, fmt.Sprintf("/rest-api/v1/roleGroups/%s", pathEscape(key)), nil, nil)
+}
+
 type monitorBranchBody struct {
 	BranchName string `json:"branchName"`
 }
@@ -158,6 +203,10 @@ func (c *Client) upsertRepositoryTag(repositoryKey, name, value string) error {
 
 func (c *Client) deleteRepositoryTag(repositoryKey, tagName string) error {
 	return c.doJSON(http.MethodDelete, fmt.Sprintf("/rest-api/v1/ScmRepositories/%s/tags/%s", pathEscape(repositoryKey), pathEscape(tagName)), nil, nil)
+}
+
+func (c *Client) deleteEngagement(key string) error {
+	return c.doJSON(http.MethodDelete, fmt.Sprintf("/rest-api/v1/engagements/%s", pathEscape(key)), nil, nil)
 }
 
 func (c *Client) doJSON(method, endpoint string, body any, out any) error {

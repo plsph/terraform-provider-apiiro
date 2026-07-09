@@ -97,11 +97,26 @@ func (p *ApiiroProvider) Configure(ctx context.Context, req provider.ConfigureRe
 func (p *ApiiroProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewScmRepositoriesResource,
+		NewApplicationsResource,
+		NewApplicationGroupsResource,
+		NewTeamsResource,
+		NewRolesResource,
+		NewRoleGroupsResource,
+		NewEngagementsResource,
 	}
 }
 
 func (p *ApiiroProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewScmRepositoriesDataSource,
+		NewApplicationsDataSource,
+		NewApplicationProfilesDataSource,
+		NewApplicationGroupsDataSource,
+		NewAuditLogsDataSource,
+		NewConnectorsDataSource,
+		NewTeamsDataSource,
+		NewRolesDataSource,
+		NewRoleGroupsDataSource,
+		NewEngagementsDataSource,
 	}
 }
