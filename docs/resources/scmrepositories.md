@@ -51,7 +51,7 @@ import {
 
 - `id` (String)
 - `name` (String)
-- `provider` (String)
+- `provider_name` (String)
 - `monitor_status` (String)
 - `default_branch` (String)
 - `url` (String)

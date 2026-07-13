@@ -33,7 +33,7 @@ type engagementsResourceModel struct {
 	Status            types.String `tfsdk:"status"`
 	Tags              types.Map    `tfsdk:"tags"`
 	EngagementLeadKey types.String `tfsdk:"engagement_lead_key"`
-	Provider          types.String `tfsdk:"provider"`
+	Provider          types.String `tfsdk:"provider_name"`
 	Attachments       types.List   `tfsdk:"attachments"`
 	Reporter          types.String `tfsdk:"reporter"`
 }
@@ -64,7 +64,7 @@ func (r *engagementsResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"status":              schema.StringAttribute{Required: true},
 			"tags":                schema.MapAttribute{Optional: true, Computed: true, ElementType: types.StringType},
 			"engagement_lead_key": schema.StringAttribute{Optional: true, Computed: true},
-			"provider":            schema.StringAttribute{Optional: true, Computed: true},
+			"provider_name":       schema.StringAttribute{Optional: true, Computed: true},
 			"attachments":         schema.ListAttribute{Optional: true, Computed: true, ElementType: types.StringType},
 			"reporter":            schema.StringAttribute{Optional: true, Computed: true},
 		},

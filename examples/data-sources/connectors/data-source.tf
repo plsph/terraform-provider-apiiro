@@ -1,5 +1,5 @@
 data "apiiro_connectors" "github" {
-  provider = "Github"
+  provider_name = "Github"
 }
 
 output "github_connector_urls" {

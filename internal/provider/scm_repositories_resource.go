@@ -32,7 +32,7 @@ type scmRepositoriesResourceModel struct {
 	MonitoredBranches             types.Set    `tfsdk:"monitored_branches"`
 	Tags                          types.Map    `tfsdk:"tags"`
 	Name                          types.String `tfsdk:"name"`
-	Provider                      types.String `tfsdk:"provider"`
+	Provider                      types.String `tfsdk:"provider_name"`
 	MonitorStatus                 types.String `tfsdk:"monitor_status"`
 	DefaultBranch                 types.String `tfsdk:"default_branch"`
 	URL                           types.String `tfsdk:"url"`
@@ -92,7 +92,7 @@ func (r *scmRepositoriesResource) Schema(_ context.Context, _ resource.SchemaReq
 				MarkdownDescription: "Repository tags managed through Apiiro tag API.",
 			},
 			"name":                             schema.StringAttribute{Computed: true},
-			"provider":                         schema.StringAttribute{Computed: true},
+			"provider_name":                    schema.StringAttribute{Computed: true},
 			"monitor_status":                   schema.StringAttribute{Computed: true},
 			"default_branch":                   schema.StringAttribute{Computed: true},
 			"url":                              schema.StringAttribute{Computed: true},

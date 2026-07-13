@@ -23,7 +23,7 @@ type connectorsDataSource struct {
 type connectorsDataSourceModel struct {
 	ID          types.String `tfsdk:"id"`
 	ConnectorID types.String `tfsdk:"connector_id"`
-	Provider    types.String `tfsdk:"provider"`
+	Provider    types.String `tfsdk:"provider_name"`
 	Connectors  types.List   `tfsdk:"connectors"`
 }
 
@@ -37,11 +37,11 @@ func (d *connectorsDataSource) Metadata(_ context.Context, req datasource.Metada
 
 func (d *connectorsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Fetches connectors from Apiiro with optional filtering by connector ID or provider.",
+		MarkdownDescription: "Fetches connectors from Apiiro with optional filtering by connector ID or provider name.",
 		Attributes: map[string]schema.Attribute{
-			"id":           schema.StringAttribute{Computed: true},
-			"connector_id": schema.StringAttribute{Optional: true},
-			"provider":     schema.StringAttribute{Optional: true},
+			"id":            schema.StringAttribute{Computed: true},
+			"connector_id":  schema.StringAttribute{Optional: true},
+			"provider_name": schema.StringAttribute{Optional: true},
 			"connectors": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
