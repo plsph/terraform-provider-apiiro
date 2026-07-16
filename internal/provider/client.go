@@ -243,13 +243,13 @@ func (c *Client) listRepositoriesV2(ctx context.Context, filters map[string][]st
 	return all, nil
 }
 
-func (c *Client) getScmRepositoryByKey(ctx context.Context, repositoryKey string) (*scmRepository, error) {
+func (c *Client) getScmRepositoryByKey(ctx context.Context, repositoryKey string, hints ...string) (*scmRepository, error) {
 	trimmedKey := strings.TrimSpace(repositoryKey)
 	if trimmedKey == "" {
 		return nil, nil
 	}
 
-	for _, nameHint := range scmRepositoryNameCandidates(trimmedKey) {
+	for _, nameHint := range scmRepositoryNameCandidates(trimmedKey, hints...) {
 		filtered, err := c.listScmRepositories(ctx, map[string][]string{"RepositoryName": {nameHint}})
 		if err != nil {
 			return nil, err
@@ -278,8 +278,8 @@ func findScmRepositoryByKey(repositories []scmRepository, repositoryKey string) 
 	return nil
 }
 
-func scmRepositoryNameCandidates(repositoryKey string) []string {
-	candidates := make([]string, 0, 3)
+func scmRepositoryNameCandidates(repositoryKey string, hints ...string) []string {
+	candidates := make([]string, 0, 6)
 	seen := map[string]struct{}{}
 
 	add := func(raw string) {
@@ -298,7 +298,22 @@ func scmRepositoryNameCandidates(repositoryKey string) []string {
 		candidates = append(candidates, value)
 	}
 
+	for _, hint := range hints {
+		add(hint)
+	}
+
+	decodedKey := repositoryKey
+	if decoded, err := url.QueryUnescape(repositoryKey); err == nil {
+		decodedKey = decoded
+	}
+
 	if parsed, err := url.Parse(repositoryKey); err == nil {
+		if segment := path.Base(strings.TrimSpace(parsed.Path)); segment != "." && segment != "/" {
+			add(segment)
+		}
+	}
+
+	if parsed, err := url.Parse(decodedKey); err == nil {
 		if segment := path.Base(strings.TrimSpace(parsed.Path)); segment != "." && segment != "/" {
 			add(segment)
 		}
@@ -308,9 +323,18 @@ func scmRepositoryNameCandidates(repositoryKey string) []string {
 		add(repositoryKey[idx+1:])
 	}
 
+	if idx := strings.LastIndex(decodedKey, "/"); idx >= 0 && idx+1 < len(decodedKey) {
+		add(decodedKey[idx+1:])
+	}
+
 	parts := strings.Split(repositoryKey, "_")
 	if len(parts) > 0 {
 		add(parts[len(parts)-1])
+	}
+
+	decodedParts := strings.Split(decodedKey, "_")
+	if len(decodedParts) > 0 {
+		add(decodedParts[len(decodedParts)-1])
 	}
 
 	return candidates

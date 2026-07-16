@@ -144,7 +144,7 @@ func (r *scmRepositoriesResource) Create(ctx context.Context, req resource.Creat
 
 	repoKey := plan.ScmRepositoryKey.ValueString()
 	tflog.Debug(ctx, "scm repositories create target", map[string]any{"scm_repository_key": repoKey})
-	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey)
+	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, plan.Name.ValueString(), plan.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Query SCM Repository", err.Error())
 		return
@@ -197,7 +197,7 @@ func (r *scmRepositoriesResource) Create(ctx context.Context, req resource.Creat
 		}
 	}
 
-	state, err := r.readState(ctx, repoKey)
+	state, err := r.readState(ctx, repoKey, plan.Name.ValueString(), plan.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read SCM Repository", err.Error())
 		return
@@ -214,7 +214,7 @@ func (r *scmRepositoriesResource) Read(ctx context.Context, req resource.ReadReq
 
 	repoKey := state.ScmRepositoryKey.ValueString()
 	tflog.Debug(ctx, "scm repositories read requested", map[string]any{"scm_repository_key": repoKey})
-	fresh, err := r.readState(ctx, repoKey)
+	fresh, err := r.readState(ctx, repoKey, state.Name.ValueString(), state.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read SCM Repository", err.Error())
 		return
@@ -303,7 +303,7 @@ func (r *scmRepositoriesResource) Update(ctx context.Context, req resource.Updat
 		}
 	}
 
-	fresh, err := r.readState(ctx, repoKey)
+	fresh, err := r.readState(ctx, repoKey, state.Name.ValueString(), state.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read SCM Repository", err.Error())
 		return
@@ -346,8 +346,8 @@ func (r *scmRepositoriesResource) ImportState(ctx context.Context, req resource.
 	resource.ImportStatePassthroughID(ctx, path.Root("scm_repository_key"), req, resp)
 }
 
-func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string) (*scmRepositoriesResourceModel, error) {
-	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey)
+func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string, hints ...string) (*scmRepositoriesResourceModel, error) {
+	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, hints...)
 	if err != nil {
 		return nil, err
 	}
