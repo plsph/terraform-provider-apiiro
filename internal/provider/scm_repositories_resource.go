@@ -158,6 +158,8 @@ func (r *scmRepositoriesResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
+	operationalKey := scmRepositoryOperationalKey(repo, repoKey)
+
 	desiredBranches := setToStrings(ctx, plan.MonitoredBranches)
 	if !plan.Monitored.ValueBool() && len(desiredBranches) > 0 {
 		resp.Diagnostics.AddAttributeError(
@@ -170,20 +172,20 @@ func (r *scmRepositoriesResource) Create(ctx context.Context, req resource.Creat
 
 	if plan.Monitored.ValueBool() {
 		if len(desiredBranches) == 0 {
-			if err := r.client.monitorRepository(ctx, repoKey); err != nil && !isAlreadyMonitoredError(err) {
+			if err := r.client.monitorRepository(ctx, operationalKey); err != nil && !isAlreadyMonitoredError(err) {
 				resp.Diagnostics.AddError("Unable to Monitor SCM Repository", err.Error())
 				return
 			}
 		} else {
 			for _, branch := range desiredBranches {
-				if err := r.client.monitorBranch(ctx, repoKey, branch); err != nil {
+				if err := r.client.monitorBranch(ctx, operationalKey, branch); err != nil {
 					resp.Diagnostics.AddError("Unable to Monitor SCM Repository Branch", err.Error())
 					return
 				}
 			}
 		}
 	} else {
-		if err := r.client.unmonitorRepository(ctx, repoKey); err != nil && !isAlreadyUnmonitoredError(err) {
+		if err := r.client.unmonitorRepository(ctx, operationalKey); err != nil && !isAlreadyUnmonitoredError(err) {
 			resp.Diagnostics.AddError("Unable to Unmonitor SCM Repository", err.Error())
 			return
 		}
@@ -191,7 +193,7 @@ func (r *scmRepositoriesResource) Create(ctx context.Context, req resource.Creat
 
 	planTags := mapFromTerraform(ctx, plan.Tags)
 	for k, v := range planTags {
-		if err := r.client.upsertRepositoryTag(ctx, repoKey, k, v); err != nil {
+		if err := r.client.upsertRepositoryTag(ctx, operationalKey, k, v); err != nil {
 			resp.Diagnostics.AddError("Unable to Upsert Repository Tag", err.Error())
 			return
 		}
@@ -239,6 +241,16 @@ func (r *scmRepositoriesResource) Update(ctx context.Context, req resource.Updat
 
 	repoKey := state.ScmRepositoryKey.ValueString()
 	tflog.Debug(ctx, "scm repositories update requested", map[string]any{"scm_repository_key": repoKey})
+	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, state.Name.ValueString(), state.ProjectID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to Query SCM Repository", err.Error())
+		return
+	}
+	if repo == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+	operationalKey := scmRepositoryOperationalKey(repo, repoKey)
 	oldMonitored := state.Monitored.ValueBool()
 	newMonitored := plan.Monitored.ValueBool()
 	oldBranches := setToStrings(ctx, state.MonitoredBranches)
@@ -255,12 +267,12 @@ func (r *scmRepositoriesResource) Update(ctx context.Context, req resource.Updat
 
 	if oldMonitored != newMonitored {
 		if newMonitored {
-			if err := r.client.monitorRepository(ctx, repoKey); err != nil && !isAlreadyMonitoredError(err) {
+			if err := r.client.monitorRepository(ctx, operationalKey); err != nil && !isAlreadyMonitoredError(err) {
 				resp.Diagnostics.AddError("Unable to Monitor SCM Repository", err.Error())
 				return
 			}
 		} else {
-			if err := r.client.unmonitorRepository(ctx, repoKey); err != nil && !isAlreadyUnmonitoredError(err) {
+			if err := r.client.unmonitorRepository(ctx, operationalKey); err != nil && !isAlreadyUnmonitoredError(err) {
 				resp.Diagnostics.AddError("Unable to Unmonitor SCM Repository", err.Error())
 				return
 			}
@@ -272,13 +284,13 @@ func (r *scmRepositoriesResource) Update(ctx context.Context, req resource.Updat
 		toMonitor := diff(newBranches, oldBranches)
 
 		for _, branch := range toUnmonitor {
-			if err := r.client.unmonitorBranch(ctx, repoKey, branch); err != nil {
+			if err := r.client.unmonitorBranch(ctx, operationalKey, branch); err != nil {
 				resp.Diagnostics.AddError("Unable to Unmonitor SCM Repository Branch", err.Error())
 				return
 			}
 		}
 		for _, branch := range toMonitor {
-			if err := r.client.monitorBranch(ctx, repoKey, branch); err != nil {
+			if err := r.client.monitorBranch(ctx, operationalKey, branch); err != nil {
 				resp.Diagnostics.AddError("Unable to Monitor SCM Repository Branch", err.Error())
 				return
 			}
@@ -289,14 +301,14 @@ func (r *scmRepositoriesResource) Update(ctx context.Context, req resource.Updat
 	newTags := mapFromTerraform(ctx, plan.Tags)
 	removed := mapDiffKeys(oldTags, newTags)
 	for _, key := range removed {
-		if err := r.client.deleteRepositoryTag(ctx, repoKey, key); err != nil {
+		if err := r.client.deleteRepositoryTag(ctx, operationalKey, key); err != nil {
 			resp.Diagnostics.AddError("Unable to Delete Repository Tag", err.Error())
 			return
 		}
 	}
 	for key, val := range newTags {
 		if oldVal, ok := oldTags[key]; !ok || oldVal != val {
-			if err := r.client.upsertRepositoryTag(ctx, repoKey, key, val); err != nil {
+			if err := r.client.upsertRepositoryTag(ctx, operationalKey, key, val); err != nil {
 				resp.Diagnostics.AddError("Unable to Upsert Repository Tag", err.Error())
 				return
 			}
@@ -324,8 +336,17 @@ func (r *scmRepositoriesResource) Delete(ctx context.Context, req resource.Delet
 
 	repoKey := state.ScmRepositoryKey.ValueString()
 	tflog.Debug(ctx, "scm repositories delete requested", map[string]any{"scm_repository_key": repoKey})
+	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, state.Name.ValueString(), state.ProjectID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Unable to Query SCM Repository", err.Error())
+		return
+	}
+	if repo == nil {
+		return
+	}
+	operationalKey := scmRepositoryOperationalKey(repo, repoKey)
 	for tagName := range mapFromTerraform(ctx, state.Tags) {
-		if err := r.client.deleteRepositoryTag(ctx, repoKey, tagName); err != nil {
+		if err := r.client.deleteRepositoryTag(ctx, operationalKey, tagName); err != nil {
 			if strings.Contains(strings.ToLower(err.Error()), "no tag with the specified name") {
 				continue
 			}
@@ -335,7 +356,7 @@ func (r *scmRepositoriesResource) Delete(ctx context.Context, req resource.Delet
 	}
 
 	if state.Monitored.ValueBool() {
-		if err := r.client.unmonitorRepository(ctx, repoKey); err != nil && !isAlreadyUnmonitoredError(err) {
+		if err := r.client.unmonitorRepository(ctx, operationalKey); err != nil && !isAlreadyUnmonitoredError(err) {
 			resp.Diagnostics.AddError("Unable to Unmonitor SCM Repository", err.Error())
 			return
 		}
@@ -343,7 +364,31 @@ func (r *scmRepositoriesResource) Delete(ctx context.Context, req resource.Delet
 }
 
 func (r *scmRepositoriesResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("scm_repository_key"), req, resp)
+	parts := strings.Split(req.ID, "|")
+	key := strings.TrimSpace(parts[0])
+	if key == "" {
+		resp.Diagnostics.AddError("Invalid Import ID", "Expected import ID format: <scm_repository_key>[|<name>[|<project_id>]]")
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("scm_repository_key"), key)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if len(parts) > 1 {
+		name := strings.TrimSpace(parts[1])
+		if name != "" {
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), name)...)
+		}
+	}
+
+	if len(parts) > 2 {
+		projectID := strings.TrimSpace(parts[2])
+		if projectID != "" {
+			resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("project_id"), projectID)...)
+		}
+	}
 }
 
 func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string, hints ...string) (*scmRepositoriesResourceModel, error) {
@@ -355,8 +400,11 @@ func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string,
 		return nil, nil
 	}
 
+	stateKey := scmRepositoryStateIdentifier(repo, repoKey)
+	operationalKey := scmRepositoryOperationalKey(repo, repoKey)
+
 	tagsMap := make(map[string]string)
-	tags, err := r.client.listRepositoryTags(ctx, repoKey)
+	tags, err := r.client.listRepositoryTags(ctx, operationalKey)
 	if err != nil {
 		if !strings.Contains(strings.ToLower(err.Error()), "404") {
 			return nil, err
@@ -373,8 +421,8 @@ func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string,
 	sort.Strings(branches)
 
 	state := &scmRepositoriesResourceModel{
-		ID:                            types.StringValue(repoKey),
-		ScmRepositoryKey:              types.StringValue(repoKey),
+		ID:                            types.StringValue(stateKey),
+		ScmRepositoryKey:              types.StringValue(stateKey),
 		Monitored:                     types.BoolValue(strings.EqualFold(valueOrEmpty(repo.MonitorStatus), "Monitored")),
 		MonitoredBranches:             stringsToSet(branches),
 		Tags:                          mapToTerraform(tagsMap),
@@ -399,6 +447,23 @@ func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string,
 		IgnoredBy:                     nullableString(repo.IgnoredBy),
 	}
 	return state, nil
+}
+
+func scmRepositoryOperationalKey(repo *scmRepository, fallback string) string {
+	if repo != nil && repo.Key != nil && strings.TrimSpace(*repo.Key) != "" {
+		return strings.TrimSpace(*repo.Key)
+	}
+	return strings.TrimSpace(fallback)
+}
+
+func scmRepositoryStateIdentifier(repo *scmRepository, fallback string) string {
+	if repo != nil && repo.ID != nil && strings.TrimSpace(*repo.ID) != "" {
+		return strings.TrimSpace(*repo.ID)
+	}
+	if repo != nil && repo.Key != nil && strings.TrimSpace(*repo.Key) != "" {
+		return strings.TrimSpace(*repo.Key)
+	}
+	return strings.TrimSpace(fallback)
 }
 
 func nullableString(v *string) types.String {

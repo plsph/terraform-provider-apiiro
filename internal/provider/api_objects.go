@@ -210,7 +210,7 @@ type repositoryBodyV2 struct {
 }
 
 func (c *Client) listApplications(ctx context.Context) ([]applicationBody, error) {
-	const pageSize = 100
+	const pageSize = 1000
 	all := make([]applicationBody, 0)
 	skip := 0
 	for {
@@ -294,7 +294,7 @@ func (c *Client) deleteApplicationGroup(ctx context.Context, key string) error {
 }
 
 func (c *Client) listTeams(ctx context.Context) ([]orgTeamBody, error) {
-	const pageSize = 100
+	const pageSize = 1000
 	all := make([]orgTeamBody, 0)
 	skip := 0
 	for {
@@ -341,7 +341,7 @@ func (c *Client) deleteTeam(ctx context.Context, key string) error {
 }
 
 func (c *Client) listRoles(ctx context.Context) ([]roleListItem, error) {
-	const pageSize = 100
+	const pageSize = 1000
 	all := make([]roleListItem, 0)
 	skip := 0
 	for {

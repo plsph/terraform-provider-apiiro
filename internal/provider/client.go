@@ -86,7 +86,7 @@ func applyAPIFilters(query url.Values, filters map[string][]string) {
 }
 
 func (c *Client) listRoleGroups(ctx context.Context) ([]roleGroupReference, error) {
-	const pageSize = 100
+	const pageSize = 1000
 	all := make([]roleGroupReference, 0)
 	skip := 0
 
@@ -156,7 +156,7 @@ func NewClient(baseURL, token string) (*Client, error) {
 }
 
 func (c *Client) listScmRepositories(ctx context.Context, filters map[string][]string) ([]scmRepository, error) {
-	const pageSize = 100
+	const pageSize = 1000
 	all := make([]scmRepository, 0)
 	skip := 0
 
@@ -274,6 +274,9 @@ func findScmRepositoryByKey(repositories []scmRepository, repositoryKey string) 
 		if repositories[i].Key != nil && *repositories[i].Key == repositoryKey {
 			return &repositories[i]
 		}
+		if repositories[i].ID != nil && *repositories[i].ID == repositoryKey {
+			return &repositories[i]
+		}
 	}
 	return nil
 }
@@ -307,15 +310,19 @@ func scmRepositoryNameCandidates(repositoryKey string, hints ...string) []string
 		decodedKey = decoded
 	}
 
-	if parsed, err := url.Parse(repositoryKey); err == nil {
-		if segment := path.Base(strings.TrimSpace(parsed.Path)); segment != "." && segment != "/" {
-			add(segment)
+	if strings.Contains(repositoryKey, "://") {
+		if parsed, err := url.Parse(repositoryKey); err == nil {
+			if segment := path.Base(strings.TrimSpace(parsed.Path)); segment != "." && segment != "/" {
+				add(segment)
+			}
 		}
 	}
 
-	if parsed, err := url.Parse(decodedKey); err == nil {
-		if segment := path.Base(strings.TrimSpace(parsed.Path)); segment != "." && segment != "/" {
-			add(segment)
+	if strings.Contains(decodedKey, "://") {
+		if parsed, err := url.Parse(decodedKey); err == nil {
+			if segment := path.Base(strings.TrimSpace(parsed.Path)); segment != "." && segment != "/" {
+				add(segment)
+			}
 		}
 	}
 
@@ -328,12 +335,12 @@ func scmRepositoryNameCandidates(repositoryKey string, hints ...string) []string
 	}
 
 	parts := strings.Split(repositoryKey, "_")
-	if len(parts) > 0 {
+	if len(parts) > 1 {
 		add(parts[len(parts)-1])
 	}
 
 	decodedParts := strings.Split(decodedKey, "_")
-	if len(decodedParts) > 0 {
+	if len(decodedParts) > 1 {
 		add(decodedParts[len(decodedParts)-1])
 	}
 
