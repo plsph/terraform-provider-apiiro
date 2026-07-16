@@ -118,7 +118,12 @@ func (d *scmRepositoriesDataSource) Read(ctx context.Context, req datasource.Rea
 	repositoryKeyFilter := strings.TrimSpace(state.ScmRepositoryKey.ValueString())
 	tflog.Debug(ctx, "scm repositories data source read requested", map[string]any{"repository_name": repositoryNameFilter, "scm_repository_key": repositoryKeyFilter})
 
-	repositories, err := d.client.listScmRepositories(ctx)
+	apiFilters := map[string][]string{}
+	if repositoryNameFilter != "" {
+		apiFilters["RepositoryName"] = []string{repositoryNameFilter}
+	}
+
+	repositories, err := d.client.listScmRepositories(ctx, apiFilters)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read SCM Repositories", err.Error())
 		return

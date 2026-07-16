@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/url"
 )
 
 type pointOfContactBody struct {
@@ -251,9 +252,14 @@ func (c *Client) deleteApplication(ctx context.Context, key string) error {
 	return c.doJSON(ctx, "DELETE", fmt.Sprintf("/rest-api/v1/applications/%s", pathEscape(key)), nil, nil)
 }
 
-func (c *Client) listApplicationGroups(ctx context.Context) ([]applicationGroupBody, error) {
+func (c *Client) listApplicationGroups(ctx context.Context, filters map[string][]string) ([]applicationGroupBody, error) {
+	query := url.Values{}
+	query.Set("pageSize", "1000")
+	applyAPIFilters(query, filters)
+	endpoint := "/rest-api/v1/applicationGroups?" + query.Encode()
+
 	var out tokenPagedResponse[applicationGroupBody]
-	if err := c.doJSON(ctx, "GET", "/rest-api/v1/applicationGroups?pageSize=1000", nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", endpoint, nil, &out); err != nil {
 		return nil, err
 	}
 	return out.Items, nil
@@ -373,9 +379,14 @@ func (c *Client) deleteRole(ctx context.Context, key string) error {
 	return c.doJSON(ctx, "DELETE", fmt.Sprintf("/rest-api/v1/roles/%s", pathEscape(key)), nil, nil)
 }
 
-func (c *Client) listEngagements(ctx context.Context) ([]engagementBody, error) {
+func (c *Client) listEngagements(ctx context.Context, filters map[string][]string) ([]engagementBody, error) {
+	query := url.Values{}
+	query.Set("pageSize", "1000")
+	applyAPIFilters(query, filters)
+	endpoint := "/rest-api/v1/engagements?" + query.Encode()
+
 	var out tokenPagedResponse[engagementBody]
-	if err := c.doJSON(ctx, "GET", "/rest-api/v1/engagements?pageSize=1000", nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", endpoint, nil, &out); err != nil {
 		return nil, err
 	}
 	return out.Items, nil
@@ -405,9 +416,14 @@ func (c *Client) updateEngagement(ctx context.Context, key string, body engageme
 	return &out, nil
 }
 
-func (c *Client) listApplicationProfiles(ctx context.Context) ([]applicationProfileBody, error) {
+func (c *Client) listApplicationProfiles(ctx context.Context, filters map[string][]string) ([]applicationProfileBody, error) {
+	query := url.Values{}
+	query.Set("pageSize", "1000")
+	applyAPIFilters(query, filters)
+	endpoint := "/rest-api/v1/applications/profiles?" + query.Encode()
+
 	var out tokenPagedResponse[applicationProfileBody]
-	if err := c.doJSON(ctx, "GET", "/rest-api/v1/applications/profiles?pageSize=1000", nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", endpoint, nil, &out); err != nil {
 		return nil, err
 	}
 	return out.Items, nil
@@ -421,9 +437,14 @@ func (c *Client) getApplicationProfile(ctx context.Context, key string) (*applic
 	return &out, nil
 }
 
-func (c *Client) listAuditLogs(ctx context.Context) ([]auditLogBody, error) {
+func (c *Client) listAuditLogs(ctx context.Context, filters map[string][]string) ([]auditLogBody, error) {
+	query := url.Values{}
+	query.Set("pageSize", "1000")
+	applyAPIFilters(query, filters)
+	endpoint := "/rest-api/v1/auditLogs?" + query.Encode()
+
 	var out tokenPagedResponse[auditLogBody]
-	if err := c.doJSON(ctx, "GET", "/rest-api/v1/auditLogs?pageSize=1000", nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", endpoint, nil, &out); err != nil {
 		return nil, err
 	}
 	return out.Items, nil

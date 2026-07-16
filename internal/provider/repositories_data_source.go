@@ -118,7 +118,15 @@ func (d *repositoriesDataSource) Read(ctx context.Context, req datasource.ReadRe
 	providerFilter := strings.TrimSpace(state.ProviderName.ValueString())
 	tflog.Debug(ctx, "repositories data source read requested", map[string]any{"name": nameFilter, "key": keyFilter, "scm_repository_key": scmKeyFilter, "provider_name": providerFilter})
 
-	repositories, err := d.client.listRepositoriesV2(ctx)
+	apiFilters := map[string][]string{}
+	if nameFilter != "" {
+		apiFilters["RepositoryName"] = []string{nameFilter}
+	}
+	if providerFilter != "" {
+		apiFilters["Provider"] = []string{providerFilter}
+	}
+
+	repositories, err := d.client.listRepositoriesV2(ctx, apiFilters)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Repositories", err.Error())
 		return

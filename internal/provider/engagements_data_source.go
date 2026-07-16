@@ -92,7 +92,18 @@ func (d *engagementsDataSource) Read(ctx context.Context, req datasource.ReadReq
 	leadFilter := strings.TrimSpace(state.LeadKey.ValueString())
 	tflog.Debug(ctx, "engagements data source read requested", map[string]any{"type": typeFilter, "status": statusFilter, "lead_key": leadFilter})
 
-	engagements, err := d.client.listEngagements(ctx)
+	apiFilters := map[string][]string{}
+	if typeFilter != "" {
+		apiFilters["EngagementType"] = []string{typeFilter}
+	}
+	if statusFilter != "" {
+		apiFilters["EngagementStatus"] = []string{statusFilter}
+	}
+	if leadFilter != "" {
+		apiFilters["EngagementLead"] = []string{leadFilter}
+	}
+
+	engagements, err := d.client.listEngagements(ctx, apiFilters)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Engagements", err.Error())
 		return

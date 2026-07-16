@@ -95,7 +95,21 @@ func (d *auditLogsDataSource) Read(ctx context.Context, req datasource.ReadReque
 	userTypeFilter := strings.TrimSpace(state.UserType.ValueString())
 	tflog.Debug(ctx, "audit logs data source read requested", map[string]any{"event_type": eventTypeFilter, "status": statusFilter, "user": userFilter, "user_type": userTypeFilter})
 
-	logs, err := d.client.listAuditLogs(ctx)
+	apiFilters := map[string][]string{}
+	if eventTypeFilter != "" {
+		apiFilters["EventType"] = []string{eventTypeFilter}
+	}
+	if statusFilter != "" {
+		apiFilters["Status"] = []string{statusFilter}
+	}
+	if userFilter != "" {
+		apiFilters["User"] = []string{userFilter}
+	}
+	if userTypeFilter != "" {
+		apiFilters["UserType"] = []string{userTypeFilter}
+	}
+
+	logs, err := d.client.listAuditLogs(ctx, apiFilters)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Audit Logs", err.Error())
 		return

@@ -84,7 +84,12 @@ func (d *applicationGroupsDataSource) Read(ctx context.Context, req datasource.R
 	keyFilter := strings.TrimSpace(state.Key.ValueString())
 	tflog.Debug(ctx, "application groups data source read requested", map[string]any{"name": nameFilter, "key": keyFilter})
 
-	groups, err := d.client.listApplicationGroups(ctx)
+	apiFilters := map[string][]string{}
+	if nameFilter != "" {
+		apiFilters["Name"] = []string{nameFilter}
+	}
+
+	groups, err := d.client.listApplicationGroups(ctx, apiFilters)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Application Groups", err.Error())
 		return

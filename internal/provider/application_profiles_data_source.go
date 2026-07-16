@@ -111,7 +111,12 @@ func (d *applicationProfilesDataSource) Read(ctx context.Context, req datasource
 			profiles = append(profiles, *profile)
 		}
 	} else {
-		list, err := d.client.listApplicationProfiles(ctx)
+		apiFilters := map[string][]string{}
+		if nameFilter != "" {
+			apiFilters["Name"] = []string{nameFilter}
+		}
+
+		list, err := d.client.listApplicationProfiles(ctx, apiFilters)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to Read Application Profiles", err.Error())
 			return

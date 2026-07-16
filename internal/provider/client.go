@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -66,6 +67,22 @@ type tagBody struct {
 type repositoryTagResponse struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
+}
+
+func applyAPIFilters(query url.Values, filters map[string][]string) {
+	for key, values := range filters {
+		name := strings.TrimSpace(key)
+		if name == "" {
+			continue
+		}
+		for _, value := range values {
+			trimmed := strings.TrimSpace(value)
+			if trimmed == "" {
+				continue
+			}
+			query.Add(fmt.Sprintf("filters[%s]", name), trimmed)
+		}
+	}
 }
 
 func (c *Client) listRoleGroups(ctx context.Context) ([]roleGroupReference, error) {
@@ -138,13 +155,17 @@ func NewClient(baseURL, token string) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) listScmRepositories(ctx context.Context) ([]scmRepository, error) {
+func (c *Client) listScmRepositories(ctx context.Context, filters map[string][]string) ([]scmRepository, error) {
 	const pageSize = 100
 	all := make([]scmRepository, 0)
 	skip := 0
 
 	for {
-		endpoint := fmt.Sprintf("/rest-api/v1/ScmRepositories?skip=%d&pageSize=%d", skip, pageSize)
+		query := url.Values{}
+		query.Set("skip", fmt.Sprintf("%d", skip))
+		query.Set("pageSize", fmt.Sprintf("%d", pageSize))
+		applyAPIFilters(query, filters)
+		endpoint := "/rest-api/v1/ScmRepositories?" + query.Encode()
 		var out apiPagedResponse[scmRepository]
 		if err := c.doJSON(ctx, http.MethodGet, endpoint, nil, &out); err != nil {
 			return nil, err
@@ -159,11 +180,12 @@ func (c *Client) listScmRepositories(ctx context.Context) ([]scmRepository, erro
 	return all, nil
 }
 
-func (c *Client) listRepositoriesV2(ctx context.Context) ([]repositoryBodyV2, error) {
+func (c *Client) listRepositoriesV2(ctx context.Context, filters map[string][]string) ([]repositoryBodyV2, error) {
 	const pageSize = 1000
 	all := make([]repositoryBodyV2, 0)
 	query := url.Values{}
 	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
+	applyAPIFilters(query, filters)
 
 	for {
 		endpoint := "/rest-api/v2/repositories"
@@ -187,16 +209,19 @@ func (c *Client) listRepositoriesV2(ctx context.Context) ([]repositoryBodyV2, er
 
 		query = url.Values{}
 		query.Set("pageSize", fmt.Sprintf("%d", pageSize))
+		applyAPIFilters(query, filters)
 
 		var nextMap map[string]string
 		if err := json.Unmarshal(rawNext, &nextMap); err == nil {
+			hasNext := false
 			for key, value := range nextMap {
 				if strings.TrimSpace(value) == "" {
 					continue
 				}
 				query.Set(key, value)
+				hasNext = true
 			}
-			if len(query) == 1 {
+			if !hasNext {
 				break
 			}
 			continue
@@ -219,16 +244,76 @@ func (c *Client) listRepositoriesV2(ctx context.Context) ([]repositoryBodyV2, er
 }
 
 func (c *Client) getScmRepositoryByKey(ctx context.Context, repositoryKey string) (*scmRepository, error) {
-	repositories, err := c.listScmRepositories(ctx)
+	trimmedKey := strings.TrimSpace(repositoryKey)
+	if trimmedKey == "" {
+		return nil, nil
+	}
+
+	for _, nameHint := range scmRepositoryNameCandidates(trimmedKey) {
+		filtered, err := c.listScmRepositories(ctx, map[string][]string{"RepositoryName": {nameHint}})
+		if err != nil {
+			return nil, err
+		}
+		if repo := findScmRepositoryByKey(filtered, trimmedKey); repo != nil {
+			return repo, nil
+		}
+	}
+
+	repositories, err := c.listScmRepositories(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	for i := range repositories {
-		if repositories[i].Key != nil && *repositories[i].Key == repositoryKey {
-			return &repositories[i], nil
-		}
+	if repo := findScmRepositoryByKey(repositories, trimmedKey); repo != nil {
+		return repo, nil
 	}
 	return nil, nil
+}
+
+func findScmRepositoryByKey(repositories []scmRepository, repositoryKey string) *scmRepository {
+	for i := range repositories {
+		if repositories[i].Key != nil && *repositories[i].Key == repositoryKey {
+			return &repositories[i]
+		}
+	}
+	return nil
+}
+
+func scmRepositoryNameCandidates(repositoryKey string) []string {
+	candidates := make([]string, 0, 3)
+	seen := map[string]struct{}{}
+
+	add := func(raw string) {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			return
+		}
+		value = strings.TrimSuffix(value, ".git")
+		if value == "" {
+			return
+		}
+		if _, exists := seen[value]; exists {
+			return
+		}
+		seen[value] = struct{}{}
+		candidates = append(candidates, value)
+	}
+
+	if parsed, err := url.Parse(repositoryKey); err == nil {
+		if segment := path.Base(strings.TrimSpace(parsed.Path)); segment != "." && segment != "/" {
+			add(segment)
+		}
+	}
+
+	if idx := strings.LastIndex(repositoryKey, "/"); idx >= 0 && idx+1 < len(repositoryKey) {
+		add(repositoryKey[idx+1:])
+	}
+
+	parts := strings.Split(repositoryKey, "_")
+	if len(parts) > 0 {
+		add(parts[len(parts)-1])
+	}
+
+	return candidates
 }
 
 func (c *Client) monitorRepository(ctx context.Context, repositoryKey string) error {
