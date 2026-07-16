@@ -36,7 +36,7 @@ output "first_repository_key" {
 - `name` (String) Optional case-insensitive filter for repository name.
 - `key` (String) Optional exact filter for repository key.
 - `scm_repository_key` (String) Optional exact filter for SCM repository key.
-- `provider` (String) Optional exact filter for provider.
+- `provider_name` (String) Optional exact filter for provider.
 
 ### Read-Only
 

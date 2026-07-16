@@ -171,23 +171,48 @@ func (c *Client) listRepositoriesV2(ctx context.Context) ([]repositoryBodyV2, er
 			endpoint += "?" + encoded
 		}
 
-		var out tokenPagedResponse[repositoryBodyV2]
+		var out struct {
+			Next  json.RawMessage    `json:"next"`
+			Items []repositoryBodyV2 `json:"items"`
+		}
 		if err := c.doJSON(ctx, http.MethodGet, endpoint, nil, &out); err != nil {
 			return nil, err
 		}
 		all = append(all, out.Items...)
-		if len(out.Next) == 0 {
+
+		rawNext := bytes.TrimSpace(out.Next)
+		if len(rawNext) == 0 || string(rawNext) == "null" {
 			break
 		}
 
 		query = url.Values{}
 		query.Set("pageSize", fmt.Sprintf("%d", pageSize))
-		for key, value := range out.Next {
-			if strings.TrimSpace(value) == "" {
-				continue
+
+		var nextMap map[string]string
+		if err := json.Unmarshal(rawNext, &nextMap); err == nil {
+			for key, value := range nextMap {
+				if strings.TrimSpace(value) == "" {
+					continue
+				}
+				query.Set(key, value)
 			}
-			query.Set(key, value)
+			if len(query) == 1 {
+				break
+			}
+			continue
 		}
+
+		var nextToken string
+		if err := json.Unmarshal(rawNext, &nextToken); err == nil {
+			nextToken = strings.TrimSpace(nextToken)
+			if nextToken == "" {
+				break
+			}
+			query.Set("next", nextToken)
+			continue
+		}
+
+		return nil, fmt.Errorf("unexpected repositories pagination token format: %s", string(rawNext))
 	}
 
 	return all, nil
@@ -270,7 +295,7 @@ func (c *Client) doJSON(ctx context.Context, method, endpoint string, body any, 
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
-	tflog.Trace(ctx, "api request", map[string]any{
+	tflog.Debug(ctx, "api request", map[string]any{
 		"method":  method,
 		"url":     fullURL,
 		"headers": sanitizeHeaders(req.Header),
@@ -287,7 +312,7 @@ func (c *Client) doJSON(ctx context.Context, method, endpoint string, body any, 
 	if readErr != nil {
 		return readErr
 	}
-	tflog.Trace(ctx, "api response", map[string]any{
+	tflog.Debug(ctx, "api response", map[string]any{
 		"method":  method,
 		"url":     fullURL,
 		"status":  resp.StatusCode,

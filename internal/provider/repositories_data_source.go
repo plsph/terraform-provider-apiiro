@@ -26,7 +26,7 @@ type repositoriesDataSourceModel struct {
 	Name         types.String `tfsdk:"name"`
 	Key          types.String `tfsdk:"key"`
 	ScmKey       types.String `tfsdk:"scm_repository_key"`
-	Provider     types.String `tfsdk:"provider"`
+	ProviderName types.String `tfsdk:"provider_name"`
 	Repositories types.List   `tfsdk:"repositories"`
 }
 
@@ -46,7 +46,7 @@ func (d *repositoriesDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 			"name":               schema.StringAttribute{Optional: true},
 			"key":                schema.StringAttribute{Optional: true},
 			"scm_repository_key": schema.StringAttribute{Optional: true},
-			"provider":           schema.StringAttribute{Optional: true},
+			"provider_name":      schema.StringAttribute{Optional: true},
 			"repositories": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
@@ -115,8 +115,8 @@ func (d *repositoriesDataSource) Read(ctx context.Context, req datasource.ReadRe
 	nameFilter := strings.TrimSpace(state.Name.ValueString())
 	keyFilter := strings.TrimSpace(state.Key.ValueString())
 	scmKeyFilter := strings.TrimSpace(state.ScmKey.ValueString())
-	providerFilter := strings.TrimSpace(state.Provider.ValueString())
-	tflog.Debug(ctx, "repositories data source read requested", map[string]any{"name": nameFilter, "key": keyFilter, "scm_repository_key": scmKeyFilter, "provider": providerFilter})
+	providerFilter := strings.TrimSpace(state.ProviderName.ValueString())
+	tflog.Debug(ctx, "repositories data source read requested", map[string]any{"name": nameFilter, "key": keyFilter, "scm_repository_key": scmKeyFilter, "provider_name": providerFilter})
 
 	repositories, err := d.client.listRepositoriesV2(ctx)
 	if err != nil {
