@@ -159,6 +159,40 @@ func (c *Client) listScmRepositories(ctx context.Context) ([]scmRepository, erro
 	return all, nil
 }
 
+func (c *Client) listRepositoriesV2(ctx context.Context) ([]repositoryBodyV2, error) {
+	const pageSize = 1000
+	all := make([]repositoryBodyV2, 0)
+	query := url.Values{}
+	query.Set("pageSize", fmt.Sprintf("%d", pageSize))
+
+	for {
+		endpoint := "/rest-api/v2/repositories"
+		if encoded := query.Encode(); encoded != "" {
+			endpoint += "?" + encoded
+		}
+
+		var out tokenPagedResponse[repositoryBodyV2]
+		if err := c.doJSON(ctx, http.MethodGet, endpoint, nil, &out); err != nil {
+			return nil, err
+		}
+		all = append(all, out.Items...)
+		if len(out.Next) == 0 {
+			break
+		}
+
+		query = url.Values{}
+		query.Set("pageSize", fmt.Sprintf("%d", pageSize))
+		for key, value := range out.Next {
+			if strings.TrimSpace(value) == "" {
+				continue
+			}
+			query.Set(key, value)
+		}
+	}
+
+	return all, nil
+}
+
 func (c *Client) getScmRepositoryByKey(ctx context.Context, repositoryKey string) (*scmRepository, error) {
 	repositories, err := c.listScmRepositories(ctx)
 	if err != nil {

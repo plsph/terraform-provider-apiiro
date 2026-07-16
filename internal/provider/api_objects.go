@@ -166,6 +166,48 @@ type connectorBody struct {
 	URL                 *string `json:"url,omitempty"`
 }
 
+type moduleBody struct {
+	FilePath *string `json:"filePath,omitempty"`
+	Name     *string `json:"name,omitempty"`
+}
+
+type repositoryBodyV2 struct {
+	ActiveSince              *string            `json:"activeSince,omitempty"`
+	ApiCount                 *int64             `json:"apiCount,omitempty"`
+	BranchName               *string            `json:"branchName,omitempty"`
+	BusinessImpact           *string            `json:"businessImpact,omitempty"`
+	ContributorCount         *int64             `json:"contributorCount,omitempty"`
+	DependencyCount          *int64             `json:"dependencyCount,omitempty"`
+	ExternalID               *string            `json:"externalId,omitempty"`
+	HasDataModels            *bool              `json:"hasDataModels,omitempty"`
+	HasExternalDependencies  *bool              `json:"hasExternalDependencies,omitempty"`
+	HasPaymentsData          *bool              `json:"hasPaymentsData,omitempty"`
+	HasPhiData               *bool              `json:"hasPhiData,omitempty"`
+	HasPiiData               *bool              `json:"hasPiiData,omitempty"`
+	HasSensitiveDependencies *bool              `json:"hasSensitiveDependencies,omitempty"`
+	Insights                 []string           `json:"insights,omitempty"`
+	IsActive                 *bool              `json:"isActive,omitempty"`
+	IsArchived               bool               `json:"isArchived"`
+	IsDefaultBranch          bool               `json:"isDefaultBranch"`
+	IsDeployed               *bool              `json:"isDeployed,omitempty"`
+	IsInternetExposed        *bool              `json:"isInternetExposed,omitempty"`
+	IsPublic                 bool               `json:"isPublic"`
+	Key                      *string            `json:"key,omitempty"`
+	LanguagePercentages      map[string]float64 `json:"languagePercentages,omitempty"`
+	Languages                []string           `json:"languages,omitempty"`
+	LastActivity             *string            `json:"lastActivity,omitempty"`
+	Licenses                 []string           `json:"licenses,omitempty"`
+	Modules                  []moduleBody       `json:"modules,omitempty"`
+	Name                     *string            `json:"name,omitempty"`
+	ProjectID                *string            `json:"projectId,omitempty"`
+	Provider                 *string            `json:"provider,omitempty"`
+	RiskLevel                *string            `json:"riskLevel,omitempty"`
+	RiskScore                int32              `json:"riskScore"`
+	ScmRepositoryKey         *string            `json:"scmRepositoryKey,omitempty"`
+	ServerURL                *string            `json:"serverUrl,omitempty"`
+	URL                      *string            `json:"url,omitempty"`
+}
+
 func (c *Client) listApplications(ctx context.Context) ([]applicationBody, error) {
 	const pageSize = 100
 	all := make([]applicationBody, 0)
