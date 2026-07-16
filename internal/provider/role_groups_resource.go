@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -62,6 +63,7 @@ func (r *roleGroupsResource) Configure(_ context.Context, req resource.Configure
 }
 
 func (r *roleGroupsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	tflog.Debug(ctx, "role groups create requested")
 	var plan roleGroupsResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -74,12 +76,12 @@ func (r *roleGroupsResource) Create(ctx context.Context, req resource.CreateRequ
 		MemberIDs:   listToStrings(ctx, plan.MemberIDs),
 		Name:        plan.Name.ValueString(),
 	}
-	key, err := r.client.createRoleGroup(body)
+	key, err := r.client.createRoleGroup(ctx, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Create Group", err.Error())
 		return
 	}
-	fresh, err := r.client.getRoleGroup(key)
+	fresh, err := r.client.getRoleGroup(ctx, key)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Group", err.Error())
 		return
@@ -93,7 +95,8 @@ func (r *roleGroupsResource) Read(ctx context.Context, req resource.ReadRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	fresh, err := r.client.getRoleGroup(state.ID.ValueString())
+	tflog.Debug(ctx, "role groups read requested", map[string]any{"id": state.ID.ValueString()})
+	fresh, err := r.client.getRoleGroup(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Group", err.Error())
 		return
@@ -113,17 +116,18 @@ func (r *roleGroupsResource) Update(ctx context.Context, req resource.UpdateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "role groups update requested", map[string]any{"id": state.ID.ValueString()})
 	body := roleGroupBody{
 		AdminIDs:    listToStrings(ctx, mergeList(plan.AdminIDs, state.AdminIDs)),
 		Description: stringPtr(mergeString(plan.Description, state.Description)),
 		MemberIDs:   listToStrings(ctx, mergeList(plan.MemberIDs, state.MemberIDs)),
 		Name:        mergeString(plan.Name, state.Name).ValueString(),
 	}
-	if err := r.client.updateRoleGroup(state.ID.ValueString(), body); err != nil {
+	if err := r.client.updateRoleGroup(ctx, state.ID.ValueString(), body); err != nil {
 		resp.Diagnostics.AddError("Unable to Update Group", err.Error())
 		return
 	}
-	fresh, err := r.client.getRoleGroup(state.ID.ValueString())
+	fresh, err := r.client.getRoleGroup(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Group", err.Error())
 		return
@@ -137,7 +141,8 @@ func (r *roleGroupsResource) Delete(ctx context.Context, req resource.DeleteRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.deleteRoleGroup(state.ID.ValueString()); err != nil {
+	tflog.Debug(ctx, "role groups delete requested", map[string]any{"id": state.ID.ValueString()})
+	if err := r.client.deleteRoleGroup(ctx, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Unable to Delete Group", err.Error())
 	}
 }

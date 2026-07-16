@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -90,8 +91,9 @@ func (d *applicationsDataSource) Read(ctx context.Context, req datasource.ReadRe
 	nameFilter := strings.TrimSpace(state.Name.ValueString())
 	typeFilter := strings.TrimSpace(state.ApplicationType.ValueString())
 	keyFilter := strings.TrimSpace(state.ApplicationKey.ValueString())
+	tflog.Debug(ctx, "applications data source read requested", map[string]any{"name": nameFilter, "application_type": typeFilter, "application_key": keyFilter})
 
-	applications, err := d.client.listApplications()
+	applications, err := d.client.listApplications(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Applications", err.Error())
 		return

@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -70,6 +71,7 @@ func (r *rolesResource) Configure(_ context.Context, req resource.ConfigureReque
 }
 
 func (r *rolesResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	tflog.Debug(ctx, "roles create requested")
 	var plan rolesResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -89,7 +91,7 @@ func (r *rolesResource) Create(ctx context.Context, req resource.CreateRequest, 
 		},
 	}
 
-	key, err := r.client.createRole(body)
+	key, err := r.client.createRole(ctx, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Create Role", err.Error())
 		return
@@ -109,8 +111,9 @@ func (r *rolesResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "roles read requested", map[string]any{"id": state.ID.ValueString()})
 
-	fresh, err := r.client.getRole(state.ID.ValueString())
+	fresh, err := r.client.getRole(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Role", err.Error())
 		return
@@ -135,8 +138,9 @@ func (r *rolesResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "roles update requested", map[string]any{"id": state.ID.ValueString()})
 
-	if err := r.client.deleteRole(state.ID.ValueString()); err != nil {
+	if err := r.client.deleteRole(ctx, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Unable to Replace Role", err.Error())
 		return
 	}
@@ -154,7 +158,7 @@ func (r *rolesResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		},
 	}
 
-	key, err := r.client.createRole(body)
+	key, err := r.client.createRole(ctx, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Recreate Role", err.Error())
 		return
@@ -173,7 +177,8 @@ func (r *rolesResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.deleteRole(state.ID.ValueString()); err != nil {
+	tflog.Debug(ctx, "roles delete requested", map[string]any{"id": state.ID.ValueString()})
+	if err := r.client.deleteRole(ctx, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Unable to Delete Role", err.Error())
 	}
 }

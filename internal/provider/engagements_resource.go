@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -84,6 +85,7 @@ func (r *engagementsResource) Configure(_ context.Context, req resource.Configur
 }
 
 func (r *engagementsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	tflog.Debug(ctx, "engagements create requested")
 	var plan engagementsResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -105,7 +107,7 @@ func (r *engagementsResource) Create(ctx context.Context, req resource.CreateReq
 		Attachments:       listToStrings(ctx, plan.Attachments),
 		Reporter:          stringPtr(plan.Reporter),
 	}
-	created, err := r.client.createEngagement(body)
+	created, err := r.client.createEngagement(ctx, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Create Engagement", err.Error())
 		return
@@ -119,8 +121,9 @@ func (r *engagementsResource) Read(ctx context.Context, req resource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "engagements read requested", map[string]any{"id": state.ID.ValueString()})
 
-	fresh, err := r.client.getEngagement(state.ID.ValueString())
+	fresh, err := r.client.getEngagement(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Engagement", err.Error())
 		return
@@ -140,6 +143,7 @@ func (r *engagementsResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "engagements update requested", map[string]any{"id": state.ID.ValueString()})
 
 	body := engagementBody{
 		Name:              stringPtr(mergeString(plan.Name, state.Name)),
@@ -156,7 +160,7 @@ func (r *engagementsResource) Update(ctx context.Context, req resource.UpdateReq
 		Attachments:       listToStrings(ctx, mergeList(plan.Attachments, state.Attachments)),
 		Reporter:          stringPtr(mergeString(plan.Reporter, state.Reporter)),
 	}
-	updated, err := r.client.updateEngagement(state.ID.ValueString(), body)
+	updated, err := r.client.updateEngagement(ctx, state.ID.ValueString(), body)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Update Engagement", err.Error())
 		return
@@ -170,7 +174,8 @@ func (r *engagementsResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.deleteEngagement(state.ID.ValueString()); err != nil {
+	tflog.Debug(ctx, "engagements delete requested", map[string]any{"id": state.ID.ValueString()})
+	if err := r.client.deleteEngagement(ctx, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Unable to Delete Engagement", err.Error())
 	}
 }

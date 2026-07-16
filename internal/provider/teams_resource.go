@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -77,6 +78,7 @@ func (r *teamsResource) Configure(_ context.Context, req resource.ConfigureReque
 }
 
 func (r *teamsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	tflog.Debug(ctx, "teams create requested")
 	var plan teamsResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -95,13 +97,13 @@ func (r *teamsResource) Create(ctx context.Context, req resource.CreateRequest, 
 		Tags:            tagsMapToBodies(mapFromTerraform(ctx, plan.Tags)),
 	}
 
-	key, err := r.client.createTeam(body)
+	key, err := r.client.createTeam(ctx, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Create Team", err.Error())
 		return
 	}
 
-	fresh, err := r.client.getTeam(key)
+	fresh, err := r.client.getTeam(ctx, key)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Team", err.Error())
 		return
@@ -115,8 +117,9 @@ func (r *teamsResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "teams read requested", map[string]any{"id": state.ID.ValueString()})
 
-	fresh, err := r.client.getTeam(state.ID.ValueString())
+	fresh, err := r.client.getTeam(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Team", err.Error())
 		return
@@ -136,6 +139,7 @@ func (r *teamsResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "teams update requested", map[string]any{"id": state.ID.ValueString()})
 
 	body := orgTeamBody{
 		Key:             stringPtr(state.ID),
@@ -150,13 +154,13 @@ func (r *teamsResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		Tags:            tagsMapToBodies(mapFromTerraform(ctx, mergeMap(plan.Tags, state.Tags))),
 	}
 
-	key, err := r.client.updateTeam(state.ID.ValueString(), body)
+	key, err := r.client.updateTeam(ctx, state.ID.ValueString(), body)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Update Team", err.Error())
 		return
 	}
 
-	fresh, err := r.client.getTeam(key)
+	fresh, err := r.client.getTeam(ctx, key)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Team", err.Error())
 		return
@@ -170,7 +174,8 @@ func (r *teamsResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.deleteTeam(state.ID.ValueString()); err != nil {
+	tflog.Debug(ctx, "teams delete requested", map[string]any{"id": state.ID.ValueString()})
+	if err := r.client.deleteTeam(ctx, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Unable to Delete Team", err.Error())
 	}
 }

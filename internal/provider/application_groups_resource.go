@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -65,6 +66,7 @@ func (r *applicationGroupsResource) Configure(_ context.Context, req resource.Co
 }
 
 func (r *applicationGroupsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	tflog.Debug(ctx, "application groups create requested")
 	var plan applicationGroupsResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -78,7 +80,7 @@ func (r *applicationGroupsResource) Create(ctx context.Context, req resource.Cre
 		Tags:            listToStrings(ctx, plan.Tags),
 	}
 
-	fresh, err := r.client.createApplicationGroup(body)
+	fresh, err := r.client.createApplicationGroup(ctx, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Create Application Group", err.Error())
 		return
@@ -92,8 +94,9 @@ func (r *applicationGroupsResource) Read(ctx context.Context, req resource.ReadR
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "application groups read requested", map[string]any{"id": state.ID.ValueString()})
 
-	fresh, err := r.client.getApplicationGroup(state.ID.ValueString())
+	fresh, err := r.client.getApplicationGroup(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Application Group", err.Error())
 		return
@@ -113,6 +116,7 @@ func (r *applicationGroupsResource) Update(ctx context.Context, req resource.Upd
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "application groups update requested", map[string]any{"id": state.ID.ValueString()})
 
 	body := applicationGroupBody{
 		Key:             stringPtr(state.ID),
@@ -122,7 +126,7 @@ func (r *applicationGroupsResource) Update(ctx context.Context, req resource.Upd
 		Tags:            listToStrings(ctx, mergeList(plan.Tags, state.Tags)),
 	}
 
-	fresh, err := r.client.updateApplicationGroup(state.ID.ValueString(), body)
+	fresh, err := r.client.updateApplicationGroup(ctx, state.ID.ValueString(), body)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Update Application Group", err.Error())
 		return
@@ -136,7 +140,8 @@ func (r *applicationGroupsResource) Delete(ctx context.Context, req resource.Del
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.deleteApplicationGroup(state.ID.ValueString()); err != nil {
+	tflog.Debug(ctx, "application groups delete requested", map[string]any{"id": state.ID.ValueString()})
+	if err := r.client.deleteApplicationGroup(ctx, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Unable to Delete Application Group", err.Error())
 	}
 }

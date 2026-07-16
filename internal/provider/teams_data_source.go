@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -82,8 +83,9 @@ func (d *teamsDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 
 	nameFilter := strings.TrimSpace(state.Name.ValueString())
 	keyFilter := strings.TrimSpace(state.Key.ValueString())
+	tflog.Debug(ctx, "teams data source read requested", map[string]any{"name": nameFilter, "key": keyFilter})
 
-	teams, err := d.client.listTeams()
+	teams, err := d.client.listTeams(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Teams", err.Error())
 		return

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -73,8 +74,9 @@ func (d *roleGroupsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	nameFilter := strings.TrimSpace(state.Name.ValueString())
 	keyFilter := strings.TrimSpace(state.Key.ValueString())
+	tflog.Debug(ctx, "role groups data source read requested", map[string]any{"name": nameFilter, "key": keyFilter})
 
-	groups, err := d.client.listRoleGroups()
+	groups, err := d.client.listRoleGroups(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Groups", err.Error())
 		return

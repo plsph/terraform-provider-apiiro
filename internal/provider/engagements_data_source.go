@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -89,8 +90,9 @@ func (d *engagementsDataSource) Read(ctx context.Context, req datasource.ReadReq
 	typeFilter := strings.TrimSpace(state.Type.ValueString())
 	statusFilter := strings.TrimSpace(state.Status.ValueString())
 	leadFilter := strings.TrimSpace(state.LeadKey.ValueString())
+	tflog.Debug(ctx, "engagements data source read requested", map[string]any{"type": typeFilter, "status": statusFilter, "lead_key": leadFilter})
 
-	engagements, err := d.client.listEngagements()
+	engagements, err := d.client.listEngagements(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Engagements", err.Error())
 		return

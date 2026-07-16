@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -81,8 +82,9 @@ func (d *applicationGroupsDataSource) Read(ctx context.Context, req datasource.R
 
 	nameFilter := strings.TrimSpace(state.Name.ValueString())
 	keyFilter := strings.TrimSpace(state.Key.ValueString())
+	tflog.Debug(ctx, "application groups data source read requested", map[string]any{"name": nameFilter, "key": keyFilter})
 
-	groups, err := d.client.listApplicationGroups()
+	groups, err := d.client.listApplicationGroups(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Application Groups", err.Error())
 		return

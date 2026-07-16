@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -76,10 +77,11 @@ func (d *connectorsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	idFilter := strings.TrimSpace(state.ConnectorID.ValueString())
 	providerFilter := strings.TrimSpace(state.Provider.ValueString())
+	tflog.Debug(ctx, "connectors data source read requested", map[string]any{"connector_id": idFilter, "provider_name": providerFilter})
 
 	connectors := make([]connectorBody, 0)
 	if idFilter != "" {
-		connector, err := d.client.getConnector(idFilter)
+		connector, err := d.client.getConnector(ctx, idFilter)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to Read Connector", err.Error())
 			return
@@ -88,7 +90,7 @@ func (d *connectorsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 			connectors = append(connectors, *connector)
 		}
 	} else {
-		list, err := d.client.listConnectors()
+		list, err := d.client.listConnectors(ctx)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to Read Connectors", err.Error())
 			return

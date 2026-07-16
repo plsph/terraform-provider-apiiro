@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -115,8 +116,9 @@ func (d *scmRepositoriesDataSource) Read(ctx context.Context, req datasource.Rea
 
 	repositoryNameFilter := strings.TrimSpace(state.RepositoryName.ValueString())
 	repositoryKeyFilter := strings.TrimSpace(state.ScmRepositoryKey.ValueString())
+	tflog.Debug(ctx, "scm repositories data source read requested", map[string]any{"repository_name": repositoryNameFilter, "scm_repository_key": repositoryKeyFilter})
 
-	repositories, err := d.client.listScmRepositories()
+	repositories, err := d.client.listScmRepositories(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read SCM Repositories", err.Error())
 		return

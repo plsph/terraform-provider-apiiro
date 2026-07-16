@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -97,10 +98,11 @@ func (d *applicationProfilesDataSource) Read(ctx context.Context, req datasource
 	keyFilter := strings.TrimSpace(state.ApplicationKey.ValueString())
 	typeFilter := strings.TrimSpace(state.ApplicationType.ValueString())
 	riskLevelFilter := strings.TrimSpace(state.RiskLevel.ValueString())
+	tflog.Debug(ctx, "application profiles data source read requested", map[string]any{"name": nameFilter, "application_key": keyFilter, "application_type": typeFilter, "risk_level": riskLevelFilter})
 
 	profiles := make([]applicationProfileBody, 0)
 	if keyFilter != "" {
-		profile, err := d.client.getApplicationProfile(keyFilter)
+		profile, err := d.client.getApplicationProfile(ctx, keyFilter)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to Read Application Profile", err.Error())
 			return
@@ -109,7 +111,7 @@ func (d *applicationProfilesDataSource) Read(ctx context.Context, req datasource
 			profiles = append(profiles, *profile)
 		}
 	} else {
-		list, err := d.client.listApplicationProfiles()
+		list, err := d.client.listApplicationProfiles(ctx)
 		if err != nil {
 			resp.Diagnostics.AddError("Unable to Read Application Profiles", err.Error())
 			return

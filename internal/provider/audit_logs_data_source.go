@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -92,8 +93,9 @@ func (d *auditLogsDataSource) Read(ctx context.Context, req datasource.ReadReque
 	statusFilter := strings.TrimSpace(state.Status.ValueString())
 	userFilter := strings.TrimSpace(state.User.ValueString())
 	userTypeFilter := strings.TrimSpace(state.UserType.ValueString())
+	tflog.Debug(ctx, "audit logs data source read requested", map[string]any{"event_type": eventTypeFilter, "status": statusFilter, "user": userFilter, "user_type": userTypeFilter})
 
-	logs, err := d.client.listAuditLogs()
+	logs, err := d.client.listAuditLogs(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Audit Logs", err.Error())
 		return

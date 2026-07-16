@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -165,14 +166,14 @@ type connectorBody struct {
 	URL                 *string `json:"url,omitempty"`
 }
 
-func (c *Client) listApplications() ([]applicationBody, error) {
+func (c *Client) listApplications(ctx context.Context) ([]applicationBody, error) {
 	const pageSize = 100
 	all := make([]applicationBody, 0)
 	skip := 0
 	for {
 		endpoint := fmt.Sprintf("/rest-api/v1/applications?skip=%d&pageSize=%d", skip, pageSize)
 		var out apiPagedResponse[applicationBody]
-		if err := c.doJSON("GET", endpoint, nil, &out); err != nil {
+		if err := c.doJSON(ctx, "GET", endpoint, nil, &out); err != nil {
 			return nil, err
 		}
 		all = append(all, out.Items...)
@@ -184,74 +185,74 @@ func (c *Client) listApplications() ([]applicationBody, error) {
 	return all, nil
 }
 
-func (c *Client) getApplication(key string) (*applicationBody, error) {
+func (c *Client) getApplication(ctx context.Context, key string) (*applicationBody, error) {
 	var out applicationBody
-	if err := c.doJSON("GET", fmt.Sprintf("/rest-api/v1/applications/%s", pathEscape(key)), nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", fmt.Sprintf("/rest-api/v1/applications/%s", pathEscape(key)), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) createApplication(body applicationBody) (string, error) {
+func (c *Client) createApplication(ctx context.Context, body applicationBody) (string, error) {
 	var out string
-	if err := c.doJSON("POST", "/rest-api/v1/applications", body, &out); err != nil {
+	if err := c.doJSON(ctx, "POST", "/rest-api/v1/applications", body, &out); err != nil {
 		return "", err
 	}
 	return out, nil
 }
 
-func (c *Client) updateApplication(key string, body applicationBody) error {
-	return c.doJSON("PUT", fmt.Sprintf("/rest-api/v1/applications/%s", pathEscape(key)), body, nil)
+func (c *Client) updateApplication(ctx context.Context, key string, body applicationBody) error {
+	return c.doJSON(ctx, "PUT", fmt.Sprintf("/rest-api/v1/applications/%s", pathEscape(key)), body, nil)
 }
 
-func (c *Client) deleteApplication(key string) error {
-	return c.doJSON("DELETE", fmt.Sprintf("/rest-api/v1/applications/%s", pathEscape(key)), nil, nil)
+func (c *Client) deleteApplication(ctx context.Context, key string) error {
+	return c.doJSON(ctx, "DELETE", fmt.Sprintf("/rest-api/v1/applications/%s", pathEscape(key)), nil, nil)
 }
 
-func (c *Client) listApplicationGroups() ([]applicationGroupBody, error) {
+func (c *Client) listApplicationGroups(ctx context.Context) ([]applicationGroupBody, error) {
 	var out tokenPagedResponse[applicationGroupBody]
-	if err := c.doJSON("GET", "/rest-api/v1/applicationGroups?pageSize=1000", nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", "/rest-api/v1/applicationGroups?pageSize=1000", nil, &out); err != nil {
 		return nil, err
 	}
 	return out.Items, nil
 }
 
-func (c *Client) getApplicationGroup(key string) (*applicationGroupBody, error) {
+func (c *Client) getApplicationGroup(ctx context.Context, key string) (*applicationGroupBody, error) {
 	var out applicationGroupBody
-	if err := c.doJSON("GET", fmt.Sprintf("/rest-api/v1/applicationGroups/%s", pathEscape(key)), nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", fmt.Sprintf("/rest-api/v1/applicationGroups/%s", pathEscape(key)), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) createApplicationGroup(body applicationGroupBody) (*applicationGroupBody, error) {
+func (c *Client) createApplicationGroup(ctx context.Context, body applicationGroupBody) (*applicationGroupBody, error) {
 	var out applicationGroupBody
-	if err := c.doJSON("POST", "/rest-api/v1/applicationGroups", body, &out); err != nil {
+	if err := c.doJSON(ctx, "POST", "/rest-api/v1/applicationGroups", body, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) updateApplicationGroup(key string, body applicationGroupBody) (*applicationGroupBody, error) {
+func (c *Client) updateApplicationGroup(ctx context.Context, key string, body applicationGroupBody) (*applicationGroupBody, error) {
 	var out applicationGroupBody
-	if err := c.doJSON("PUT", fmt.Sprintf("/rest-api/v1/applicationGroups/%s", pathEscape(key)), body, &out); err != nil {
+	if err := c.doJSON(ctx, "PUT", fmt.Sprintf("/rest-api/v1/applicationGroups/%s", pathEscape(key)), body, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) deleteApplicationGroup(key string) error {
-	return c.doJSON("DELETE", fmt.Sprintf("/rest-api/v1/applicationGroups/%s", pathEscape(key)), nil, nil)
+func (c *Client) deleteApplicationGroup(ctx context.Context, key string) error {
+	return c.doJSON(ctx, "DELETE", fmt.Sprintf("/rest-api/v1/applicationGroups/%s", pathEscape(key)), nil, nil)
 }
 
-func (c *Client) listTeams() ([]orgTeamBody, error) {
+func (c *Client) listTeams(ctx context.Context) ([]orgTeamBody, error) {
 	const pageSize = 100
 	all := make([]orgTeamBody, 0)
 	skip := 0
 	for {
 		endpoint := fmt.Sprintf("/rest-api/v1/teams?skip=%d&pageSize=%d", skip, pageSize)
 		var out apiPagedResponse[orgTeamBody]
-		if err := c.doJSON("GET", endpoint, nil, &out); err != nil {
+		if err := c.doJSON(ctx, "GET", endpoint, nil, &out); err != nil {
 			return nil, err
 		}
 		all = append(all, out.Items...)
@@ -263,42 +264,42 @@ func (c *Client) listTeams() ([]orgTeamBody, error) {
 	return all, nil
 }
 
-func (c *Client) getTeam(key string) (*orgTeamBody, error) {
+func (c *Client) getTeam(ctx context.Context, key string) (*orgTeamBody, error) {
 	var out orgTeamBody
-	if err := c.doJSON("GET", fmt.Sprintf("/rest-api/v1/teams/%s", pathEscape(key)), nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", fmt.Sprintf("/rest-api/v1/teams/%s", pathEscape(key)), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) createTeam(body orgTeamBody) (string, error) {
+func (c *Client) createTeam(ctx context.Context, body orgTeamBody) (string, error) {
 	var out string
-	if err := c.doJSON("POST", "/rest-api/v1/teams", body, &out); err != nil {
+	if err := c.doJSON(ctx, "POST", "/rest-api/v1/teams", body, &out); err != nil {
 		return "", err
 	}
 	return out, nil
 }
 
-func (c *Client) updateTeam(key string, body orgTeamBody) (string, error) {
+func (c *Client) updateTeam(ctx context.Context, key string, body orgTeamBody) (string, error) {
 	var out string
-	if err := c.doJSON("PUT", fmt.Sprintf("/rest-api/v1/teams/%s", pathEscape(key)), body, &out); err != nil {
+	if err := c.doJSON(ctx, "PUT", fmt.Sprintf("/rest-api/v1/teams/%s", pathEscape(key)), body, &out); err != nil {
 		return "", err
 	}
 	return out, nil
 }
 
-func (c *Client) deleteTeam(key string) error {
-	return c.doJSON("DELETE", fmt.Sprintf("/rest-api/v1/teams/%s", pathEscape(key)), nil, nil)
+func (c *Client) deleteTeam(ctx context.Context, key string) error {
+	return c.doJSON(ctx, "DELETE", fmt.Sprintf("/rest-api/v1/teams/%s", pathEscape(key)), nil, nil)
 }
 
-func (c *Client) listRoles() ([]roleListItem, error) {
+func (c *Client) listRoles(ctx context.Context) ([]roleListItem, error) {
 	const pageSize = 100
 	all := make([]roleListItem, 0)
 	skip := 0
 	for {
 		endpoint := fmt.Sprintf("/rest-api/v1/roles?skip=%d&pageSize=%d", skip, pageSize)
 		var out apiPagedResponse[roleListItem]
-		if err := c.doJSON("GET", endpoint, nil, &out); err != nil {
+		if err := c.doJSON(ctx, "GET", endpoint, nil, &out); err != nil {
 			return nil, err
 		}
 		all = append(all, out.Items...)
@@ -310,93 +311,93 @@ func (c *Client) listRoles() ([]roleListItem, error) {
 	return all, nil
 }
 
-func (c *Client) getRole(key string) (*roleBody, error) {
+func (c *Client) getRole(ctx context.Context, key string) (*roleBody, error) {
 	var out roleBody
-	if err := c.doJSON("GET", fmt.Sprintf("/rest-api/v1/roles/%s", pathEscape(key)), nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", fmt.Sprintf("/rest-api/v1/roles/%s", pathEscape(key)), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) createRole(body roleBody) (string, error) {
+func (c *Client) createRole(ctx context.Context, body roleBody) (string, error) {
 	var out string
-	if err := c.doJSON("POST", "/rest-api/v1/roles", body, &out); err != nil {
+	if err := c.doJSON(ctx, "POST", "/rest-api/v1/roles", body, &out); err != nil {
 		return "", err
 	}
 	return out, nil
 }
 
-func (c *Client) deleteRole(key string) error {
-	return c.doJSON("DELETE", fmt.Sprintf("/rest-api/v1/roles/%s", pathEscape(key)), nil, nil)
+func (c *Client) deleteRole(ctx context.Context, key string) error {
+	return c.doJSON(ctx, "DELETE", fmt.Sprintf("/rest-api/v1/roles/%s", pathEscape(key)), nil, nil)
 }
 
-func (c *Client) listEngagements() ([]engagementBody, error) {
+func (c *Client) listEngagements(ctx context.Context) ([]engagementBody, error) {
 	var out tokenPagedResponse[engagementBody]
-	if err := c.doJSON("GET", "/rest-api/v1/engagements?pageSize=1000", nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", "/rest-api/v1/engagements?pageSize=1000", nil, &out); err != nil {
 		return nil, err
 	}
 	return out.Items, nil
 }
 
-func (c *Client) getEngagement(key string) (*engagementBody, error) {
+func (c *Client) getEngagement(ctx context.Context, key string) (*engagementBody, error) {
 	var out engagementBody
-	if err := c.doJSON("GET", fmt.Sprintf("/rest-api/v1/engagements/%s", pathEscape(key)), nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", fmt.Sprintf("/rest-api/v1/engagements/%s", pathEscape(key)), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) createEngagement(body engagementBody) (*engagementBody, error) {
+func (c *Client) createEngagement(ctx context.Context, body engagementBody) (*engagementBody, error) {
 	var out engagementBody
-	if err := c.doJSON("POST", "/rest-api/v1/engagements", body, &out); err != nil {
+	if err := c.doJSON(ctx, "POST", "/rest-api/v1/engagements", body, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) updateEngagement(key string, body engagementBody) (*engagementBody, error) {
+func (c *Client) updateEngagement(ctx context.Context, key string, body engagementBody) (*engagementBody, error) {
 	var out engagementBody
-	if err := c.doJSON("PUT", fmt.Sprintf("/rest-api/v1/engagements/%s", pathEscape(key)), body, &out); err != nil {
+	if err := c.doJSON(ctx, "PUT", fmt.Sprintf("/rest-api/v1/engagements/%s", pathEscape(key)), body, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) listApplicationProfiles() ([]applicationProfileBody, error) {
+func (c *Client) listApplicationProfiles(ctx context.Context) ([]applicationProfileBody, error) {
 	var out tokenPagedResponse[applicationProfileBody]
-	if err := c.doJSON("GET", "/rest-api/v1/applications/profiles?pageSize=1000", nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", "/rest-api/v1/applications/profiles?pageSize=1000", nil, &out); err != nil {
 		return nil, err
 	}
 	return out.Items, nil
 }
 
-func (c *Client) getApplicationProfile(key string) (*applicationProfileBody, error) {
+func (c *Client) getApplicationProfile(ctx context.Context, key string) (*applicationProfileBody, error) {
 	var out applicationProfileBody
-	if err := c.doJSON("GET", fmt.Sprintf("/rest-api/v1/applications/profiles/%s", pathEscape(key)), nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", fmt.Sprintf("/rest-api/v1/applications/profiles/%s", pathEscape(key)), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-func (c *Client) listAuditLogs() ([]auditLogBody, error) {
+func (c *Client) listAuditLogs(ctx context.Context) ([]auditLogBody, error) {
 	var out tokenPagedResponse[auditLogBody]
-	if err := c.doJSON("GET", "/rest-api/v1/auditLogs?pageSize=1000", nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", "/rest-api/v1/auditLogs?pageSize=1000", nil, &out); err != nil {
 		return nil, err
 	}
 	return out.Items, nil
 }
 
-func (c *Client) listConnectors() ([]connectorBody, error) {
+func (c *Client) listConnectors(ctx context.Context) ([]connectorBody, error) {
 	var out tokenPagedResponse[connectorBody]
-	if err := c.doJSON("GET", "/rest-api/v1/connectors?pageSize=1000", nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", "/rest-api/v1/connectors?pageSize=1000", nil, &out); err != nil {
 		return nil, err
 	}
 	return out.Items, nil
 }
 
-func (c *Client) getConnector(id string) (*connectorBody, error) {
+func (c *Client) getConnector(ctx context.Context, id string) (*connectorBody, error) {
 	var out connectorBody
-	if err := c.doJSON("GET", fmt.Sprintf("/rest-api/v1/connectors/%s", pathEscape(id)), nil, &out); err != nil {
+	if err := c.doJSON(ctx, "GET", fmt.Sprintf("/rest-api/v1/connectors/%s", pathEscape(id)), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

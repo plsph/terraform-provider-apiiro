@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -96,6 +97,7 @@ func (r *applicationsResource) Configure(_ context.Context, req resource.Configu
 }
 
 func (r *applicationsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	tflog.Debug(ctx, "applications create requested")
 	var plan applicationsResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -123,13 +125,13 @@ func (r *applicationsResource) Create(ctx context.Context, req resource.CreateRe
 		Tags:                   tagsMapToBodies(mapFromTerraform(ctx, plan.Tags)),
 	}
 
-	key, err := r.client.createApplication(body)
+	key, err := r.client.createApplication(ctx, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Create Application", err.Error())
 		return
 	}
 
-	fresh, err := r.client.getApplication(key)
+	fresh, err := r.client.getApplication(ctx, key)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Application", err.Error())
 		return
@@ -144,8 +146,9 @@ func (r *applicationsResource) Read(ctx context.Context, req resource.ReadReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "applications read requested", map[string]any{"id": state.ID.ValueString()})
 
-	fresh, err := r.client.getApplication(state.ID.ValueString())
+	fresh, err := r.client.getApplication(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Application", err.Error())
 		return
@@ -165,6 +168,7 @@ func (r *applicationsResource) Update(ctx context.Context, req resource.UpdateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	tflog.Debug(ctx, "applications update requested", map[string]any{"id": state.ID.ValueString()})
 
 	body := applicationBody{
 		Key:                    stringPtr(state.ID),
@@ -188,12 +192,12 @@ func (r *applicationsResource) Update(ctx context.Context, req resource.UpdateRe
 		Tags:                   tagsMapToBodies(mapFromTerraform(ctx, mergeMap(plan.Tags, state.Tags))),
 	}
 
-	if err := r.client.updateApplication(state.ID.ValueString(), body); err != nil {
+	if err := r.client.updateApplication(ctx, state.ID.ValueString(), body); err != nil {
 		resp.Diagnostics.AddError("Unable to Update Application", err.Error())
 		return
 	}
 
-	fresh, err := r.client.getApplication(state.ID.ValueString())
+	fresh, err := r.client.getApplication(ctx, state.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read Application", err.Error())
 		return
@@ -207,7 +211,8 @@ func (r *applicationsResource) Delete(ctx context.Context, req resource.DeleteRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.deleteApplication(state.ID.ValueString()); err != nil {
+	tflog.Debug(ctx, "applications delete requested", map[string]any{"id": state.ID.ValueString()})
+	if err := r.client.deleteApplication(ctx, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Unable to Delete Application", err.Error())
 	}
 }
