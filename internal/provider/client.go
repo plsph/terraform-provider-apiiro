@@ -159,6 +159,7 @@ func (c *Client) listScmRepositories(ctx context.Context, filters map[string][]s
 	const pageSize = 1000
 	all := make([]scmRepository, 0)
 	skip := 0
+	tflog.Debug(ctx, "scm repositories list requested", map[string]any{"filters": filters, "page_size": pageSize})
 
 	for {
 		query := url.Values{}
@@ -166,6 +167,7 @@ func (c *Client) listScmRepositories(ctx context.Context, filters map[string][]s
 		query.Set("pageSize", fmt.Sprintf("%d", pageSize))
 		applyAPIFilters(query, filters)
 		endpoint := "/rest-api/v1/ScmRepositories?" + query.Encode()
+		tflog.Debug(ctx, "scm repositories list page requested", map[string]any{"filters": filters, "skip": skip, "page_size": pageSize})
 		var out apiPagedResponse[scmRepository]
 		if err := c.doJSON(ctx, http.MethodGet, endpoint, nil, &out); err != nil {
 			return nil, err
@@ -246,26 +248,30 @@ func (c *Client) listRepositoriesV2(ctx context.Context, filters map[string][]st
 func (c *Client) getScmRepositoryByKey(ctx context.Context, repositoryKey string, hints ...string) (*scmRepository, error) {
 	trimmedKey := strings.TrimSpace(repositoryKey)
 	if trimmedKey == "" {
+		tflog.Debug(ctx, "scm repository lookup skipped", map[string]any{"reason": "empty repository key"})
 		return nil, nil
 	}
 
-	for _, nameHint := range scmRepositoryNameCandidates(trimmedKey, hints...) {
-		filtered, err := c.listScmRepositories(ctx, map[string][]string{"RepositoryName": {nameHint}})
-		if err != nil {
-			return nil, err
-		}
-		if repo := findScmRepositoryByKey(filtered, trimmedKey); repo != nil {
-			return repo, nil
-		}
+	nameHint := ""
+	if len(hints) > 0 {
+		nameHint = strings.TrimSpace(hints[0])
+	}
+	if nameHint == "" {
+		tflog.Debug(ctx, "scm repository lookup skipped", map[string]any{"repository_key": trimmedKey, "reason": "empty repository name hint"})
+		return nil, nil
 	}
 
-	repositories, err := c.listScmRepositories(ctx, nil)
+	nameFilters := map[string][]string{"RepositoryName": {nameHint}}
+	tflog.Debug(ctx, "scm repository lookup via name filter", map[string]any{"repository_key": trimmedKey, "filters": nameFilters, "hints": hints})
+	repositories, err := c.listScmRepositories(ctx, nameFilters)
 	if err != nil {
 		return nil, err
 	}
 	if repo := findScmRepositoryByKey(repositories, trimmedKey); repo != nil {
+		tflog.Debug(ctx, "scm repository lookup matched", map[string]any{"repository_key": trimmedKey, "match_source": "name filter"})
 		return repo, nil
 	}
+	tflog.Debug(ctx, "scm repository lookup missed", map[string]any{"repository_key": trimmedKey, "match_source": "name filter"})
 	return nil, nil
 }
 

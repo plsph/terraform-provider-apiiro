@@ -143,8 +143,10 @@ func (r *scmRepositoriesResource) Create(ctx context.Context, req resource.Creat
 	}
 
 	repoKey := plan.ScmRepositoryKey.ValueString()
+	repoNameHint := preferredRepositoryNameHint(plan.Name, repoKey)
 	tflog.Debug(ctx, "scm repositories create target", map[string]any{"scm_repository_key": repoKey})
-	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, plan.Name.ValueString(), plan.ProjectID.ValueString())
+	tflog.Debug(ctx, "scm repositories create lookup path", map[string]any{"path": "resource lookup", "operation": "create"})
+	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, repoNameHint, plan.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Query SCM Repository", err.Error())
 		return
@@ -199,7 +201,7 @@ func (r *scmRepositoriesResource) Create(ctx context.Context, req resource.Creat
 		}
 	}
 
-	state, err := r.readState(ctx, repoKey, plan.Name.ValueString(), plan.ProjectID.ValueString())
+	state, err := r.readState(ctx, repoKey, repoNameHint, plan.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read SCM Repository", err.Error())
 		return
@@ -215,8 +217,10 @@ func (r *scmRepositoriesResource) Read(ctx context.Context, req resource.ReadReq
 	}
 
 	repoKey := state.ScmRepositoryKey.ValueString()
+	repoNameHint := preferredRepositoryNameHint(state.Name, repoKey)
 	tflog.Debug(ctx, "scm repositories read requested", map[string]any{"scm_repository_key": repoKey})
-	fresh, err := r.readState(ctx, repoKey, state.Name.ValueString(), state.ProjectID.ValueString())
+	tflog.Debug(ctx, "scm repositories read lookup path", map[string]any{"path": "resource lookup", "operation": "read"})
+	fresh, err := r.readState(ctx, repoKey, repoNameHint, state.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read SCM Repository", err.Error())
 		return
@@ -240,8 +244,10 @@ func (r *scmRepositoriesResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	repoKey := state.ScmRepositoryKey.ValueString()
+	repoNameHint := preferredRepositoryNameHint(state.Name, repoKey)
 	tflog.Debug(ctx, "scm repositories update requested", map[string]any{"scm_repository_key": repoKey})
-	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, state.Name.ValueString(), state.ProjectID.ValueString())
+	tflog.Debug(ctx, "scm repositories update lookup path", map[string]any{"path": "resource lookup", "operation": "update"})
+	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, repoNameHint, state.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Query SCM Repository", err.Error())
 		return
@@ -315,7 +321,7 @@ func (r *scmRepositoriesResource) Update(ctx context.Context, req resource.Updat
 		}
 	}
 
-	fresh, err := r.readState(ctx, repoKey, state.Name.ValueString(), state.ProjectID.ValueString())
+	fresh, err := r.readState(ctx, repoKey, repoNameHint, state.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read SCM Repository", err.Error())
 		return
@@ -335,8 +341,10 @@ func (r *scmRepositoriesResource) Delete(ctx context.Context, req resource.Delet
 	}
 
 	repoKey := state.ScmRepositoryKey.ValueString()
+	repoNameHint := preferredRepositoryNameHint(state.Name, repoKey)
 	tflog.Debug(ctx, "scm repositories delete requested", map[string]any{"scm_repository_key": repoKey})
-	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, state.Name.ValueString(), state.ProjectID.ValueString())
+	tflog.Debug(ctx, "scm repositories delete lookup path", map[string]any{"path": "resource lookup", "operation": "delete"})
+	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, repoNameHint, state.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Query SCM Repository", err.Error())
 		return
@@ -392,11 +400,13 @@ func (r *scmRepositoriesResource) ImportState(ctx context.Context, req resource.
 }
 
 func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string, hints ...string) (*scmRepositoriesResourceModel, error) {
+	tflog.Debug(ctx, "scm repositories read state path", map[string]any{"path": "readState", "repository_key": repoKey, "hints": hints})
 	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, hints...)
 	if err != nil {
 		return nil, err
 	}
 	if repo == nil {
+		tflog.Debug(ctx, "scm repositories read state miss", map[string]any{"repository_key": repoKey})
 		return nil, nil
 	}
 
@@ -409,7 +419,9 @@ func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string,
 		if !strings.Contains(strings.ToLower(err.Error()), "404") {
 			return nil, err
 		}
+		tflog.Debug(ctx, "scm repositories tags lookup missing", map[string]any{"repository_key": repoKey, "operational_key": operationalKey})
 	} else {
+		tflog.Debug(ctx, "scm repositories tags lookup succeeded", map[string]any{"repository_key": repoKey, "operational_key": operationalKey, "tag_count": len(tags)})
 		for _, tag := range tags {
 			if strings.TrimSpace(tag.Name) != "" {
 				tagsMap[tag.Name] = tag.Value
@@ -478,6 +490,15 @@ func valueOrEmpty(v *string) string {
 		return ""
 	}
 	return *v
+}
+
+func preferredRepositoryNameHint(name types.String, fallback string) string {
+	if !name.IsNull() && !name.IsUnknown() {
+		if trimmed := strings.TrimSpace(name.ValueString()); trimmed != "" {
+			return trimmed
+		}
+	}
+	return strings.TrimSpace(fallback)
 }
 
 func setToStrings(ctx context.Context, setVal types.Set) []string {

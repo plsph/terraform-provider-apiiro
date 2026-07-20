@@ -117,6 +117,7 @@ func (d *scmRepositoriesDataSource) Read(ctx context.Context, req datasource.Rea
 	repositoryNameFilter := strings.TrimSpace(state.RepositoryName.ValueString())
 	repositoryKeyFilter := strings.TrimSpace(state.ScmRepositoryKey.ValueString())
 	tflog.Debug(ctx, "scm repositories data source read requested", map[string]any{"repository_name": repositoryNameFilter, "scm_repository_key": repositoryKeyFilter})
+	tflog.Debug(ctx, "scm repositories data source lookup path", map[string]any{"path": "data source list", "filters": map[string]string{"repository_name": repositoryNameFilter, "scm_repository_key": repositoryKeyFilter}})
 
 	apiFilters := map[string][]string{}
 	if repositoryNameFilter != "" {
