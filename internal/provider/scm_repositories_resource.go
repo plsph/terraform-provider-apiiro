@@ -193,15 +193,15 @@ func (r *scmRepositoriesResource) Create(ctx context.Context, req resource.Creat
 		}
 	}
 
-	planTags := mapFromTerraform(ctx, plan.Tags)
-	for k, v := range planTags {
+	// Use the raw types.Map so readState can distinguish null vs empty maps
+	for k, v := range mapFromTerraform(ctx, plan.Tags) {
 		if err := r.client.upsertRepositoryTag(ctx, operationalKey, k, v); err != nil {
 			resp.Diagnostics.AddError("Unable to Upsert Repository Tag", err.Error())
 			return
 		}
 	}
 
-	state, err := r.readState(ctx, repoKey, repoNameHint, plan.ProjectID.ValueString())
+	state, err := r.readState(ctx, repoKey, plan.Tags, repoNameHint, plan.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read SCM Repository", err.Error())
 		return
@@ -220,7 +220,7 @@ func (r *scmRepositoriesResource) Read(ctx context.Context, req resource.ReadReq
 	repoNameHint := preferredRepositoryNameHint(state.Name, repoKey)
 	tflog.Debug(ctx, "scm repositories read requested", map[string]any{"scm_repository_key": repoKey})
 	tflog.Debug(ctx, "scm repositories read lookup path", map[string]any{"path": "resource lookup", "operation": "read"})
-	fresh, err := r.readState(ctx, repoKey, repoNameHint, state.ProjectID.ValueString())
+	fresh, err := r.readState(ctx, repoKey, state.Tags, repoNameHint, state.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read SCM Repository", err.Error())
 		return
@@ -321,7 +321,8 @@ func (r *scmRepositoriesResource) Update(ctx context.Context, req resource.Updat
 		}
 	}
 
-	fresh, err := r.readState(ctx, repoKey, repoNameHint, state.ProjectID.ValueString())
+	merged := mergeMap(plan.Tags, state.Tags)
+	fresh, err := r.readState(ctx, repoKey, merged, repoNameHint, state.ProjectID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to Read SCM Repository", err.Error())
 		return
@@ -399,7 +400,7 @@ func (r *scmRepositoriesResource) ImportState(ctx context.Context, req resource.
 	}
 }
 
-func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string, hints ...string) (*scmRepositoriesResourceModel, error) {
+func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string, managedMap types.Map, hints ...string) (*scmRepositoriesResourceModel, error) {
 	tflog.Debug(ctx, "scm repositories read state path", map[string]any{"path": "readState", "repository_key": repoKey, "hints": hints})
 	repo, err := r.client.getScmRepositoryByKey(ctx, repoKey, hints...)
 	if err != nil {
@@ -422,9 +423,27 @@ func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string,
 		tflog.Debug(ctx, "scm repositories tags lookup missing", map[string]any{"repository_key": repoKey, "operational_key": operationalKey})
 	} else {
 		tflog.Debug(ctx, "scm repositories tags lookup succeeded", map[string]any{"repository_key": repoKey, "operational_key": operationalKey, "tag_count": len(tags)})
-		for _, tag := range tags {
-			if strings.TrimSpace(tag.Name) != "" {
-				tagsMap[tag.Name] = tag.Value
+		// Determine whether tags are explicitly managed by inspecting `managedMap`.
+		// If `managedMap` is null/unknown, treat tags as computed and ignore backend tags.
+		if managedMap.IsNull() || managedMap.IsUnknown() {
+			tflog.Debug(ctx, "scm repositories skipping all backend tags (managedMap is null/unknown)", map[string]any{"repository_key": repoKey})
+		} else {
+			// Convert managedMap to native map for key comparison. This will be empty if user provided {}
+			managed := mapFromTerraform(ctx, managedMap)
+			for _, tag := range tags {
+				name := strings.TrimSpace(tag.Name)
+				if name == "" {
+					continue
+				}
+				if _, ok := managed[name]; ok {
+					tagsMap[name] = tag.Value
+				}
+			}
+			// Ensure managed keys that are not returned by the backend are still present in state
+			for k, v := range managed {
+				if _, ok := tagsMap[k]; !ok {
+					tagsMap[k] = v
+				}
 			}
 		}
 	}
@@ -432,12 +451,19 @@ func (r *scmRepositoriesResource) readState(ctx context.Context, repoKey string,
 	branches := append([]string{}, repo.MonitoredBranches...)
 	sort.Strings(branches)
 
+	var tagsAttr types.Map
+	if managedMap.IsNull() || managedMap.IsUnknown() {
+		tagsAttr = types.MapNull(types.StringType)
+	} else {
+		tagsAttr = mapToTerraform(tagsMap)
+	}
+
 	state := &scmRepositoriesResourceModel{
 		ID:                            types.StringValue(stateKey),
 		ScmRepositoryKey:              types.StringValue(stateKey),
 		Monitored:                     types.BoolValue(strings.EqualFold(valueOrEmpty(repo.MonitorStatus), "Monitored")),
 		MonitoredBranches:             stringsToSet(branches),
-		Tags:                          mapToTerraform(tagsMap),
+		Tags:                          tagsAttr,
 		Name:                          nullableString(repo.Name),
 		Provider:                      nullableString(repo.Provider),
 		MonitorStatus:                 nullableString(repo.MonitorStatus),
